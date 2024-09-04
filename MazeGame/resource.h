@@ -27,6 +27,8 @@
 #define IDC_HISTORY                     1012
 #define IDC_FAIL                        1013
 #define IDC_RESTART                     1014
+#define IDC_PAUSE_BUTTON                1015
+
 
 // Next default values for new objects
 // 

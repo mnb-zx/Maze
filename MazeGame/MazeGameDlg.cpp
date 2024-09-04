@@ -38,10 +38,15 @@ BEGIN_MESSAGE_MAP(CMazeGameDlg, CDialogEx)
 	ON_WM_PAINT()
 	ON_WM_QUERYDRAGICON()
 	ON_WM_TIMER()
+	ON_BN_CLICKED(IDC_PAUSE_BUTTON, &CMazeGameDlg::OnPauseButtonClicked) // 添加按钮点击事件映射
 END_MESSAGE_MAP()
 
 
+
+
 // CMazeGameDlg 消息处理程序
+
+// MazeGameDlg.cpp
 
 BOOL CMazeGameDlg::OnInitDialog()
 {
@@ -93,8 +98,22 @@ BOOL CMazeGameDlg::OnInitDialog()
 
 	m_prevPlayerPos = m_playerPos;
 
+	// 初始化暂停按钮
+	GetClientRect(&clientRect);
+	int cellSize = min(clientRect.Width() / m_mazeSize, clientRect.Height() / m_mazeSize);
+	int mazeRightEdge = m_mazeSize * cellSize; // 迷宫右边界的X坐标
+	int dialogRightEdge = clientRect.right; // 对话框右边框的X坐标
+	int pauseButtonX = (mazeRightEdge + dialogRightEdge) / 2 - 50; // 计算X坐标，假设按钮宽度为100
+	int pauseButtonY = clientRect.Height() / 2 - 15; // 计算Y坐标，假设按钮高度为30
+
+	m_pauseButton.Create(_T("暂停游戏"), WS_CHILD | WS_VISIBLE | BS_PUSHBUTTON, CRect(pauseButtonX, pauseButtonY, pauseButtonX + 100, pauseButtonY + 30), this, IDC_PAUSE_BUTTON);
+	m_pauseButton.ShowWindow(SW_SHOW);
+
 	return TRUE;  // 除非将焦点设置到控件，否则返回 TRUE
 }
+
+
+
 
 void CMazeGameDlg::OnSysCommand(UINT nID, LPARAM lParam)
 {
@@ -306,11 +325,16 @@ BOOL CMazeGameDlg::PreTranslateMessage(MSG* pMsg)
 {
 	if (pMsg->message == WM_KEYDOWN)
 	{
+		if (!m_bTimerRunning) {
+			return TRUE; // 如果游戏暂停，不处理键盘事件
+		}
 		OnKeyDown(pMsg->wParam, pMsg->lParam, 0);
 		return TRUE;
 	}
 	return CDialogEx::PreTranslateMessage(pMsg);
 }
+
+
 void CMazeGameDlg::OnTimer(UINT_PTR nIDEvent)
 {
 	if (nIDEvent == 1 && m_bTimerRunning) {
@@ -324,3 +348,36 @@ int CMazeGameDlg::GetElapsedTime() const
 {
 	return m_nSecondsElapsed;
 }
+
+
+void CMazeGameDlg::OnPauseButtonClicked()
+{
+	// 暂停按钮点击处理逻辑
+	if (m_bTimerRunning) {
+		KillTimer(1); // 停止计时器
+		m_bTimerRunning = false;
+		m_pauseButton.SetWindowText(_T("继续游戏"));
+
+		// 在暂停按钮下方3个单位处显示“游戏已暂停”
+		CRect buttonRect;
+		m_pauseButton.GetWindowRect(&buttonRect);
+		ScreenToClient(&buttonRect);
+		int textX = buttonRect.left;
+		int textY = buttonRect.bottom + 3 * 15; // 3个单位处，假设单位高度为15
+
+		CClientDC dc(this);
+		dc.SetBkMode(TRANSPARENT);
+		dc.TextOutW(textX, textY, _T("游戏已暂停"));
+	}
+	else {
+		SetTimer(1, 1000, nullptr); // 启动计时器
+		m_bTimerRunning = true;
+		m_pauseButton.SetWindowText(_T("暂停游戏"));
+
+		// 清除“游戏已暂停”文字
+		Invalidate();
+	}
+}
+
+
+
