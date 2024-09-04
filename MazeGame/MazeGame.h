@@ -11,6 +11,7 @@
 #include "resource.h"		// 主符号
 #include <vector>
 #include <random>
+#include <chrono>
 
 // CMazeGameApp:
 // 有关此类的实现，请参阅 MazeGame.cpp
@@ -21,16 +22,19 @@ public:
     Maze(int width, int height);
     void generate();
     bool isWall(int x, int y) const;
-    std::pair<int, int> getStart() const { return start; }
-    std::pair<int, int> getEnd() const { return end; }
+    std::pair<int, int> getStart() const;
+    std::pair<int, int> getEnd() const;
 
 private:
-    int width, height;
-    std::vector<std::vector<bool>> grid;
-    std::pair<int, int> start, end;
-    std::mt19937 rng;
-
+    void generateStartAndEnd();
     void dfs(int x, int y);
+
+    int width;
+    int height;
+    std::vector<std::vector<bool>> grid;
+    std::pair<int, int> start;
+    std::pair<int, int> end;
+    std::mt19937 rng;
 };
 
 class CMazeGameApp : public CWinApp

@@ -10,7 +10,8 @@
 #include <algorithm>
 #include <chrono>
 #include "Cwlc.h"
-
+#include <array>
+#include <utility>
 
 
 #ifdef _DEBUG
@@ -115,28 +116,56 @@ BOOL CMazeGameApp::InitInstance()
 
 Maze::Maze(int width, int height) : width(width), height(height) {
 	grid.resize(height, std::vector<bool>(width, true));
-	unsigned seed = std::chrono::system_clock::now().time_since_epoch().count();
+	unsigned seed = static_cast<unsigned>(std::chrono::system_clock::now().time_since_epoch().count());
 	rng.seed(seed);
 }
 
 void Maze::generate() {
 	// 初始化迷宫，所有格子都是墙
-	for (int y = 0; y < height; ++y) {
-		for (int x = 0; x < width; ++x) {
-			grid[y][x] = true;
-		}
-	}
-
-	// 从(1,1)开始生成迷宫
-	dfs(1, 1);
+	grid.resize(height, std::vector<bool>(width, true));
 
 	// 设置起点和终点
-	start = { 1, 1 };
-	end = { width - 2, height - 2 };
+	generateStartAndEnd();
+
+	// 从起点开始生成迷宫
+	dfs(start.first, start.second);
 
 	// 确保起点和终点是通路
 	grid[start.second][start.first] = false;
 	grid[end.second][end.first] = false;
+}
+
+void Maze::generateStartAndEnd() {
+	std::uniform_int_distribution<int> dist(1, 4);
+	int startSide = dist(rng);
+	int endSide = dist(rng);
+
+	auto getRandomPointOnSide = [&](int side) {
+		std::uniform_int_distribution<int> distPos(1, (side % 2 == 0 ? width : height) - 2);
+		switch (side) {
+		case 1: return std::make_pair(distPos(rng), 1); // Top
+		case 2: return std::make_pair(width - 2, distPos(rng)); // Right
+		case 3: return std::make_pair(distPos(rng), height - 2); // Bottom
+		case 4: return std::make_pair(1, distPos(rng)); // Left
+		}
+		return std::make_pair(1, 1); // Default case
+		};
+
+	start = getRandomPointOnSide(startSide);
+	end = getRandomPointOnSide(endSide);
+
+	// 确保起点和终点不相同
+	while (start == end) {
+		end = getRandomPointOnSide(endSide);
+	}
+}
+
+std::pair<int, int> Maze::getStart() const {
+	return start;
+}
+
+std::pair<int, int> Maze::getEnd() const {
+	return end;
 }
 
 bool Maze::isWall(int x, int y) const {
@@ -145,18 +174,22 @@ bool Maze::isWall(int x, int y) const {
 }
 
 void Maze::dfs(int x, int y) {
-	grid[y][x] = false; // 当前格子设为通路
+	static const std::array<std::pair<int, int>, 4> directions = {
+		std::make_pair(0, -1), std::make_pair(1, 0), std::make_pair(0, 1), std::make_pair(-1, 0)
+	};
 
-	// 定义四个方向：上、右、下、左
-	std::vector<std::pair<int, int>> dirs = { {0, -2}, {2, 0}, {0, 2}, {-2, 0} };
-	std::shuffle(dirs.begin(), dirs.end(), rng); // 随机打乱方向顺序
+	std::vector<std::pair<int, int>> shuffledDirections(directions.begin(), directions.end());
+	std::shuffle(shuffledDirections.begin(), shuffledDirections.end(), rng);
 
-	for (const auto& dir : dirs) {
-		int nx = x + dir.first, ny = y + dir.second;
+	grid[y][x] = false;
+
+	for (const auto& dir : shuffledDirections) {
+		int nx = x + dir.first * 2;
+		int ny = y + dir.second * 2;
+
 		if (nx > 0 && nx < width - 1 && ny > 0 && ny < height - 1 && grid[ny][nx]) {
-			// 如果下一个格子在范围内且是墙，就把中间的墙打通
-			grid[y + dir.second / 2][x + dir.first / 2] = false;
-			dfs(nx, ny); // 递归处理下一个格子
+			grid[y + dir.second][x + dir.first] = false;
+			dfs(nx, ny);
 		}
 	}
 }

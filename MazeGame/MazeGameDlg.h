@@ -30,6 +30,8 @@ class CMazeGameDlg : public CDialogEx
 public:
 	CMazeGameDlg(CWnd* pParent = nullptr);	// 标准构造函数
 	void InitializeMaze(int size);
+	int GetElapsedTime() const;
+	void updateWall();
 	// 对话框数据
 #ifdef AFX_DESIGN_TIME
 	enum { IDD = IDD_MAZEGAME_DIALOG };
@@ -42,20 +44,20 @@ protected:
 	afx_msg void OnPaint();
 	afx_msg void OnKeyDown(UINT nChar, UINT nRepCnt, UINT nFlags);
 	afx_msg void OnTimer(UINT_PTR nIDEvent); // 添加计时器消息处理函数
+	HICON m_hIcon;
+	afx_msg void OnSysCommand(UINT nID, LPARAM lParam);
+	afx_msg HCURSOR OnQueryDragIcon();
 	DECLARE_MESSAGE_MAP()
 
 private:
 	Maze* m_pMaze;
 	int m_mazeSize;
 	std::pair<int, int> m_playerPos;
-	int m_nSecondsElapsed; // 添加计时器变量
-
+	int m_nSecondsElapsed;
+	bool m_bTimerRunning;
+	bool m_bNeedUpdateWalls;
 	void MovePossible(int dx, int dy);
-	// 实现
-protected:
-	HICON m_hIcon;
-
-	// 生成的消息映射函数
-	afx_msg void OnSysCommand(UINT nID, LPARAM lParam);
-	afx_msg HCURSOR OnQueryDragIcon();
+	CDC m_memDC;
+	CBitmap m_memBitmap;
+	std::pair<int, int> m_prevPlayerPos;
 };
