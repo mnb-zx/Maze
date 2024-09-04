@@ -135,8 +135,8 @@ void Maze::generate() {
 	end = { width - 2, height - 2 };
 
 	// 确保起点和终点是通路
-	grid[start.second][start.first] = false;
-	grid[end.second][end.first] = false;
+	//grid[start.second][start.first] = false;
+	//grid[end.second][end.first] = false;
 }
 
 bool Maze::isWall(int x, int y) const {
