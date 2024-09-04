@@ -41,6 +41,7 @@ BEGIN_MESSAGE_MAP(CMazeGameDlg, CDialogEx)
 	ON_WM_SYSCOMMAND()
 	ON_WM_PAINT()
 	ON_WM_QUERYDRAGICON()
+	ON_WM_TIMER()
 END_MESSAGE_MAP()
 
 
@@ -79,6 +80,10 @@ BOOL CMazeGameDlg::OnInitDialog()
 	// 
 	// 确保窗口句柄已经初始化后再调用 Invalidate()
 	Invalidate();
+
+	// 初始化计时器
+	m_nSecondsElapsed = 0;
+	SetTimer(1, 1000, nullptr); // 每秒触发一次
 
 	return TRUE;  // 除非将焦点设置到控件，否则返回 TRUE
 }
@@ -143,7 +148,7 @@ void CMazeGameDlg::InitializeMaze(int size)
 	if (m_pMaze) {
 		delete m_pMaze;
 	}
-	m_pMaze = new Maze (m_mazeSize, m_mazeSize);
+	m_pMaze = new Maze(m_mazeSize, m_mazeSize);
 	m_pMaze->generate();
 	m_playerPos = m_pMaze->getStart();
 }
@@ -181,7 +186,88 @@ void CMazeGameDlg::OnPaint()
 
 	CRect playerRect(m_playerPos.first * cellSize, m_playerPos.second * cellSize, (m_playerPos.first + 1) * cellSize, (m_playerPos.second + 1) * cellSize);
 	dc.FillSolidRect(playerRect, RGB(0, 0, 255)); // 蓝色玩家
+
+	// 绘制提示文字
+	CString strHint;
+	if (m_mazeSize == 32) {
+		strHint = _T("2分钟内通关");
+	}
+	else if (m_mazeSize == 64) {
+		strHint = _T("4分钟内通关");
+	}
+
+	int hintX = 0;
+	int hintY = 0;
+	if (!strHint.IsEmpty()) {
+		// 设置提示文字的字体大小为计时器字体大小的一半
+		CFont hintFont;
+		hintFont.CreatePointFont(80, _T("Arial")); // 80 = 160 / 2
+		CFont* pOldHintFont = dc.SelectObject(&hintFont);
+
+		// 获取提示文字的宽度和高度
+		CSize hintTextSize = dc.GetTextExtent(strHint);
+		int mazeRightWallX = m_mazeSize * cellSize; // 迷宫右壁的X坐标
+		int dialogRightBorderX = clientRect.right; // 对话框右边框的X坐标
+		int timerCenterX = (mazeRightWallX + dialogRightBorderX) / 2; // 计算正中间的X坐标
+		hintX = timerCenterX - hintTextSize.cx / 2; // 计算提示文字左上角的X坐标
+		hintY = 4 * cellSize - hintTextSize.cy - 2; // 计算提示文字的Y坐标
+
+		// 如果是64*64迷宫，向下平移6个单位
+		if (m_mazeSize == 64) {
+			hintY += 6 * cellSize;
+		}
+
+		// 设置背景透明
+		dc.SetBkMode(TRANSPARENT);
+		dc.TextOutW(hintX, hintY, strHint); // 绘制提示文字
+
+		// 恢复原来的字体
+		dc.SelectObject(pOldHintFont);
+	}
+
+	// 绘制计时器
+	CString strTime;
+	strTime.Format(_T("%02d:%02d"), m_nSecondsElapsed / 60, m_nSecondsElapsed % 60);
+	CSize textSize = dc.GetTextExtent(strTime); // 获取文本的宽度和高度
+	int timerX = hintX; // ! 将计时器的X坐标设置为提示文字的X坐标
+	int timerY = 4 * cellSize; // 向下平移4个单位
+
+	// 如果是64*64迷宫，向下平移6个单位
+	if (m_mazeSize == 64) {
+		timerY += 6 * cellSize;
+	}
+
+	// 设置字体大小为原来的4倍
+	CFont font;
+	font.CreatePointFont(160, _T("Arial")); // 160 = 4 * 40 (默认字体大小为40)
+	CFont* pOldFont = dc.SelectObject(&font);
+
+	// 设置背景透明
+	dc.SetBkMode(TRANSPARENT);
+
+	// 根据时间和迷宫大小设置字体颜色和跳动特效
+	bool isBlinking = false;
+	if ((m_mazeSize == 32 && m_nSecondsElapsed >= 110) || (m_mazeSize == 64 && m_nSecondsElapsed >= 230)) {
+		dc.SetTextColor(RGB(255, 0, 0)); // 红色字体
+		isBlinking = true;
+	}
+	else {
+		dc.SetTextColor(RGB(0, 0, 0)); // 黑色字体
+	}
+
+	// 如果需要跳动特效
+	if (isBlinking && (m_nSecondsElapsed % 2 == 0)) {
+		font.DeleteObject();
+		font.CreatePointFont(300, _T("Arial")); // 增大字体
+		dc.SelectObject(&font);
+	}
+
+	dc.TextOutW(timerX, timerY, strTime); // 修改X坐标
+
+	// 恢复原来的字体
+	dc.SelectObject(pOldFont);
 }
+
 
 void CMazeGameDlg::OnKeyDown(UINT nChar, UINT nRepCnt, UINT nFlags)
 {
@@ -212,4 +298,12 @@ BOOL CMazeGameDlg::PreTranslateMessage(MSG* pMsg)
 		return TRUE;
 	}
 	return CDialogEx::PreTranslateMessage(pMsg);
+}
+void CMazeGameDlg::OnTimer(UINT_PTR nIDEvent)
+{
+	if (nIDEvent == 1) {
+		m_nSecondsElapsed++;
+		Invalidate(); // 触发重绘
+	}
+	CDialogEx::OnTimer(nIDEvent);
 }
