@@ -317,6 +317,11 @@ void CMazeGameDlg::MovePossible(int dx, int dy)
 		if (m_playerPos == m_pMaze->getEnd()) {
 			m_bTimerRunning = false;
 			KillTimer(1); // 停止计时器
+			// 创建并显示结束游戏对话框
+			if (m_pEndGameDlg == nullptr) {
+				m_pEndGameDlg = new CEndGame(this);
+			}
+			m_pEndGameDlg->DoModal(); // 显示对话框
 		}
 	}
 }
