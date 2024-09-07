@@ -1,5 +1,4 @@
-﻿
-// MazeGameDlg.cpp: 实现文件
+﻿// MazeGameDlg.cpp: 实现文件
 //
 
 #include "pch.h"
@@ -7,6 +6,8 @@
 #include "MazeGame.h"
 #include "MazeGameDlg.h"
 #include "afxdialogex.h"
+#include <chrono>
+#include <ctime>
 
 #ifdef _DEBUG
 #define new DEBUG_NEW
@@ -18,11 +19,11 @@ CAboutDlg::CAboutDlg() : CDialogEx(IDD_ABOUTBOX)
 
 void CAboutDlg::DoDataExchange(CDataExchange* pDX)
 {
-	CDialogEx::DoDataExchange(pDX);
+    CDialogEx::DoDataExchange(pDX);
 }
 
 BEGIN_MESSAGE_MAP(CAboutDlg, CDialogEx)
-	ON_WM_KEYDOWN()
+    ON_WM_KEYDOWN()
 END_MESSAGE_MAP()
 
 
@@ -30,354 +31,367 @@ END_MESSAGE_MAP()
 
 void CMazeGameDlg::DoDataExchange(CDataExchange* pDX)
 {
-	CDialogEx::DoDataExchange(pDX);
+    CDialogEx::DoDataExchange(pDX);
+    DDX_Control(pDX, IDC_TIMER, m_timerEdit); // 绑定计时器编辑控件
+    DDX_Control(pDX, IDC_PASSREQUIRE_STATIC, m_passRequireStatic); // 绑定静态文本控件
+    DDX_Control(pDX, IDC_PAUSE_BUTTON, m_pauseButton); // 绑定暂停按钮
+    DDX_Control(pDX, IDC_SHOWPAUSE_STATIC, m_showPauseStatic); // 绑定显示暂停状态的静态文本
 }
 
-BEGIN_MESSAGE_MAP(CMazeGameDlg, CDialogEx)
-	ON_WM_SYSCOMMAND()
-	ON_WM_PAINT()
-	ON_WM_QUERYDRAGICON()
-	ON_WM_TIMER()
-	ON_BN_CLICKED(IDC_PAUSE_BUTTON, &CMazeGameDlg::OnPauseButtonClicked) // 添加按钮点击事件映射
-END_MESSAGE_MAP()
 
+BEGIN_MESSAGE_MAP(CMazeGameDlg, CDialogEx)
+    ON_WM_SYSCOMMAND()
+    ON_WM_PAINT()
+    ON_WM_QUERYDRAGICON()
+    ON_WM_TIMER() // 添加计时器消息映射
+    ON_WM_CTLCOLOR() // 添加控件颜色消息映射
+    ON_BN_CLICKED(IDC_PAUSE_BUTTON, &CMazeGameDlg::OnBnClickedPauseButton)
+END_MESSAGE_MAP()
 
 
 
 // CMazeGameDlg 消息处理程序
 
-// MazeGameDlg.cpp
-
 BOOL CMazeGameDlg::OnInitDialog()
 {
-	CDialogEx::OnInitDialog();
+    CDialogEx::OnInitDialog();
 
-	// 将“关于...”菜单项添加到系统菜单中。
+    // 将“关于...”菜单项添加到系统菜单中。
 
-	// IDM_ABOUTBOX 必须在系统命令范围内。
-	ASSERT((IDM_ABOUTBOX & 0xFFF0) == IDM_ABOUTBOX);
-	ASSERT(IDM_ABOUTBOX < 0xF000);
+    // IDM_ABOUTBOX 必须在系统命令范围内。
+    ASSERT((IDM_ABOUTBOX & 0xFFF0) == IDM_ABOUTBOX);
+    ASSERT(IDM_ABOUTBOX < 0xF000);
 
-	CMenu* pSysMenu = GetSystemMenu(FALSE);
-	if (pSysMenu != nullptr)
-	{
-		BOOL bNameValid;
-		CString strAboutMenu;
-		bNameValid = strAboutMenu.LoadString(IDS_ABOUTBOX);
-		ASSERT(bNameValid);
-		if (!strAboutMenu.IsEmpty())
-		{
-			pSysMenu->AppendMenu(MF_SEPARATOR);
-			pSysMenu->AppendMenu(MF_STRING, IDM_ABOUTBOX, strAboutMenu);
-		}
-	}
+    CMenu* pSysMenu = GetSystemMenu(FALSE);
+    if (pSysMenu != nullptr)
+    {
+        BOOL bNameValid;
+        CString strAboutMenu;
+        bNameValid = strAboutMenu.LoadString(IDS_ABOUTBOX);
+        ASSERT(bNameValid);
+        if (!strAboutMenu.IsEmpty())
+        {
+            pSysMenu->AppendMenu(MF_SEPARATOR);
+            pSysMenu->AppendMenu(MF_STRING, IDM_ABOUTBOX, strAboutMenu);
+        }
+    }
 
-	// 设置此对话框的图标。  当应用程序主窗口不是对话框时，框架将自动
-	//  执行此操作
-	SetIcon(m_hIcon, TRUE);			// 设置大图标
-	SetIcon(m_hIcon, FALSE);		// 设置小图标
+    // 设置此对话框的图标。  当应用程序主窗口不是对话框时，框架将自动
+    //  执行此操作
+    SetIcon(m_hIcon, TRUE);            // 设置大图标
+    SetIcon(m_hIcon, FALSE);        // 设置小图标
 
-	// TODO: 在此添加额外的初始化代码
-	// 
-	// 确保窗口句柄已经初始化后再调用 Invalidate()
-	Invalidate();
+    // TODO: 在此添加额外的初始化代码
+    // 
+    // 确保窗口句柄已经初始化后再调用 Invalidate()
+    Invalidate();
 
-	// 初始化计时器
-	m_nSecondsElapsed = 0;
-	SetTimer(1, 1000, nullptr); // 每秒触发一次
+    // 初始化标记
+    m_bNeedUpdateWalls = true;
 
-	// 初始化标记
-	m_bNeedUpdateWalls = true;
+    CRect clientRect;
+    GetClientRect(&clientRect);
+    CClientDC dc(this);
+    m_memDC.CreateCompatibleDC(&dc);
+    m_memBitmap.CreateCompatibleBitmap(&dc, clientRect.Width(), clientRect.Height());
+    m_memDC.SelectObject(&m_memBitmap);
 
-	CRect clientRect;
-	GetClientRect(&clientRect);
-	CClientDC dc(this);
-	m_memDC.CreateCompatibleDC(&dc);
-	m_memBitmap.CreateCompatibleBitmap(&dc, clientRect.Width(), clientRect.Height());
-	m_memDC.SelectObject(&m_memBitmap);
+    m_prevPlayerPos = m_playerPos;
 
-	m_prevPlayerPos = m_playerPos;
+    // 初始化计时器
+    m_startTime = CTime::GetCurrentTime();
+    SetTimer(1, 1000, nullptr); // 每秒触发一次
 
-	// 初始化暂停按钮
-	GetClientRect(&clientRect);
-	int cellSize = min(clientRect.Width() / m_mazeSize, clientRect.Height() / m_mazeSize);
-	int mazeRightEdge = m_mazeSize * cellSize; // 迷宫右边界的X坐标
-	int dialogRightEdge = clientRect.right; // 对话框右边框的X坐标
-	int pauseButtonX = (mazeRightEdge + dialogRightEdge) / 2 - 50; // 计算X坐标，假设按钮宽度为100
-	int pauseButtonY = clientRect.Height() / 2 - 15; // 计算Y坐标，假设按钮高度为30
+    // 如果迷宫大小为64*64，设置静态文本框的文字
+    if (m_mazeSize == 64) {
+        m_passRequireStatic.SetWindowText(_T("4分钟内通关"));
+    }
 
-	m_pauseButton.Create(_T("暂停游戏"), WS_CHILD | WS_VISIBLE | BS_PUSHBUTTON, CRect(pauseButtonX, pauseButtonY, pauseButtonX + 100, pauseButtonY + 30), this, IDC_PAUSE_BUTTON);
-	m_pauseButton.ShowWindow(SW_SHOW);
+    m_isPaused = false; // 初始化为未暂停状态
+    m_showPauseStatic.ShowWindow(SW_HIDE); // 初始化为隐藏状态
+    m_isTimerAlert = false; // 初始化为未警告状态
 
-	return TRUE;  // 除非将焦点设置到控件，否则返回 TRUE
+    return TRUE;  // 除非将焦点设置到控件，否则返回 TRUE
 }
-
-
-
 
 void CMazeGameDlg::OnSysCommand(UINT nID, LPARAM lParam)
 {
-	if ((nID & 0xFFF0) == IDM_ABOUTBOX)
-	{
-		CAboutDlg dlgAbout;
-		dlgAbout.DoModal();
-	}
-	else
-	{
-		CDialogEx::OnSysCommand(nID, static_cast<UINT>(lParam));
-	}
+    if ((nID & 0xFFF0) == IDM_ABOUTBOX)
+    {
+        CAboutDlg dlgAbout;
+        dlgAbout.DoModal();
+    }
+    else
+    {
+        CDialogEx::OnSysCommand(nID, static_cast<UINT>(lParam));
+    }
 }
 
 //当用户拖动最小化窗口时系统调用此函数取得光标
 //显示。
 HCURSOR CMazeGameDlg::OnQueryDragIcon()
 {
-	return static_cast<HCURSOR>(m_hIcon);
+    return static_cast<HCURSOR>(m_hIcon);
 }
 
 CMazeGameDlg::CMazeGameDlg(CWnd* pParent /*=nullptr*/)
-	: CDialogEx(IDD_MAZEGAME_DIALOG, pParent), m_pMaze(nullptr), m_mazeSize(32), m_bTimerRunning(false), m_nSecondsElapsed(0), m_hIcon(nullptr)
+    : CDialogEx(IDD_MAZEGAME_DIALOG, pParent), m_pMaze(nullptr), m_mazeSize(32), m_hIcon(nullptr),
+    m_bNeedUpdateWalls(true), m_isPaused(false), m_isTimerAlert(false), m_isGameEnded(false) 
 {
 }
 
+
+
 void CMazeGameDlg::InitializeMaze(int size)
 {
-	m_mazeSize = size;
-	if (m_pMaze) {
-		delete m_pMaze;
-	}
-	m_pMaze = new Maze(m_mazeSize, m_mazeSize);
-	m_pMaze->generate();
-	m_playerPos = m_pMaze->getStart();
-	m_nSecondsElapsed = 0;
-	m_bTimerRunning = true;
-	SetTimer(1, 1000, nullptr); // 启动计时器
+    m_mazeSize = size;
+    if (m_pMaze) {
+        delete m_pMaze;
+    }
+    m_pMaze = new Maze(m_mazeSize, m_mazeSize);
+    m_pMaze->generate();
+    m_playerPos = m_pMaze->getStart();
 }
 
 void CMazeGameDlg::OnPaint()
 {
-	CPaintDC dc(this);
-	if (!m_pMaze) {
-		TRACE("m_pMaze is null in OnPaint\n");
-		return;
-	}
-	CRect clientRect;
-	GetClientRect(&clientRect);
-	int cellSize = min(clientRect.Width() / m_mazeSize, clientRect.Height() / m_mazeSize);
+    CPaintDC dc(this);
+    if (!m_pMaze) {
+        TRACE("m_pMaze is null in OnPaint\n");
+        return;
+    }
+    CRect clientRect;
+    GetClientRect(&clientRect);
+    int cellSize = min(clientRect.Width() / m_mazeSize, clientRect.Height() / m_mazeSize);
 
-	if (m_bNeedUpdateWalls) {
-		m_memDC.FillSolidRect(&clientRect, RGB(255, 255, 255)); // 清空背景
-		for (int y = 0; y < m_mazeSize; ++y) {
-			for (int x = 0; x < m_mazeSize; ++x) {
-				CRect cellRect(x * cellSize, y * cellSize, (x + 1) * cellSize, (y + 1) * cellSize);
-				if (m_pMaze->isWall(x, y)) {
-					m_memDC.FillSolidRect(cellRect, RGB(0, 0, 0)); // 黑色墙壁
-				}
-				else {
-					m_memDC.FillSolidRect(cellRect, RGB(255, 255, 255)); // 白色路径
-				}
-			}
-		}
-		m_bNeedUpdateWalls = false; // 重绘完墙体后设置为false
-	}
+    if (m_bNeedUpdateWalls) {
+        m_memDC.FillSolidRect(&clientRect, RGB(255, 255, 255)); // 清空背景
+        for (int y = 0; y < m_mazeSize; ++y) {
+            for (int x = 0; x < m_mazeSize; ++x) {
+                CRect cellRect(x * cellSize, y * cellSize, (x + 1) * cellSize, (y + 1) * cellSize);
+                if (m_pMaze->isWall(x, y)) {
+                    m_memDC.FillSolidRect(cellRect, RGB(0, 0, 0)); // 黑色墙壁
+                }
+                else {
+                    m_memDC.FillSolidRect(cellRect, RGB(255, 255, 255)); // 白色路径
+                }
+            }
+        }
+        m_bNeedUpdateWalls = false; // 重绘完墙体后设置为false
+    }
 
-	// 将内存设备上下文中的内容绘制到屏幕上
-	dc.BitBlt(0, 0, clientRect.Width(), clientRect.Height(), &m_memDC, 0, 0, SRCCOPY);
+    // 将内存设备上下文中的内容绘制到屏幕上
+    dc.BitBlt(0, 0, clientRect.Width(), clientRect.Height(), &m_memDC, 0, 0, SRCCOPY);
 
-	// 只重绘上一个位置和当前的位置
-	CRect prevPlayerRect(m_prevPlayerPos.first * cellSize, m_prevPlayerPos.second * cellSize, (m_prevPlayerPos.first + 1) * cellSize, (m_prevPlayerPos.second + 1) * cellSize);
-	dc.FillSolidRect(prevPlayerRect, RGB(255, 255, 255)); // 白色路径
+    // 只重绘上一个位置和当前的位置
+    CRect prevPlayerRect(m_prevPlayerPos.first * cellSize, m_prevPlayerPos.second * cellSize, (m_prevPlayerPos.first + 1) * cellSize, (m_prevPlayerPos.second + 1) * cellSize);
+    dc.FillSolidRect(prevPlayerRect, RGB(255, 255, 255)); // 白色路径
 
-	CRect playerRect(m_playerPos.first * cellSize, m_playerPos.second * cellSize, (m_playerPos.first + 1) * cellSize, (m_playerPos.second + 1) * cellSize);
-	dc.FillSolidRect(playerRect, RGB(0, 0, 255)); // 蓝色玩家
+    CRect playerRect(m_playerPos.first * cellSize, m_playerPos.second * cellSize, (m_playerPos.first + 1) * cellSize, (m_playerPos.second + 1) * cellSize);
+    dc.FillSolidRect(playerRect, RGB(0, 0, 255)); // 蓝色玩家
 
-	auto start = m_pMaze->getStart();
-	CRect startRect(start.first * cellSize, start.second * cellSize, (start.first + 1) * cellSize, (start.second + 1) * cellSize);
-	dc.FillSolidRect(startRect, RGB(0, 255, 0)); // 绿色起点
+    auto start = m_pMaze->getStart();
+    CRect startRect(start.first * cellSize, start.second * cellSize, (start.first + 1) * cellSize, (start.second + 1) * cellSize);
+    dc.FillSolidRect(startRect, RGB(0, 255, 0)); // 绿色起点
 
-	auto end = m_pMaze->getEnd();
-	CRect endRect(end.first * cellSize, end.second * cellSize, (end.first + 1) * cellSize, (end.second + 1) * cellSize);
-	dc.FillSolidRect(endRect, RGB(255, 0, 0)); // 红色终点
-
-	// 绘制提示文字
-	CString strHint;
-	if (m_mazeSize == 32) {
-		strHint = _T("2分钟内通关");
-	}
-	else if (m_mazeSize == 64) {
-		strHint = _T("4分钟内通关");
-	}
-
-	int hintX = 0;
-	int hintY = 0;
-	if (!strHint.IsEmpty()) {
-		// 设置提示文字的字体大小为计时器字体大小的一半
-		CFont hintFont;
-		hintFont.CreatePointFont(80, _T("Arial")); // 80 = 160 / 2
-		CFont* pOldHintFont = dc.SelectObject(&hintFont);
-
-		// 获取提示文字的宽度和高度
-		CSize hintTextSize = dc.GetTextExtent(strHint);
-		int mazeRightWallX = m_mazeSize * cellSize; // 迷宫右壁的X坐标
-		int dialogRightBorderX = clientRect.right; // 对话框右边框的X坐标
-		int timerCenterX = (mazeRightWallX + dialogRightBorderX) / 2; // 计算正中间的X坐标
-		hintX = timerCenterX - hintTextSize.cx / 2; // 计算提示文字左上角的X坐标
-		hintY = 4 * cellSize - hintTextSize.cy - 2; // 计算提示文字的Y坐标
-
-		// 如果是64*64迷宫，向下平移6个单位
-		if (m_mazeSize == 64) {
-			hintY += 6 * cellSize;
-		}
-
-		// 设置背景透明
-		dc.SetBkMode(TRANSPARENT);
-		dc.TextOutW(hintX, hintY, strHint); // 绘制提示文字
-
-		// 恢复原来的字体
-		dc.SelectObject(pOldHintFont);
-	}
-
-	// 绘制计时器
-	CString strTime;
-	strTime.Format(_T("%02d:%02d"), m_nSecondsElapsed / 60, m_nSecondsElapsed % 60);
-	CSize textSize = dc.GetTextExtent(strTime); // 获取文本的宽度和高度
-	int timerX = hintX; // ! 将计时器的X坐标设置为提示文字的X坐标
-	int timerY = 4 * cellSize; // 向下平移4个单位
-
-	// 如果是64*64迷宫，向下平移6个单位
-	if (m_mazeSize == 64) {
-		timerY += 6 * cellSize;
-	}
-
-	// 设置字体大小为原来的4倍
-	CFont font;
-	font.CreatePointFont(160, _T("Arial")); // 160 = 4 * 40 (默认字体大小为40)
-	CFont* pOldFont = dc.SelectObject(&font);
-
-	// 设置背景透明
-	dc.SetBkMode(TRANSPARENT);
-	dc.TextOutW(timerX, timerY, strTime); // 绘制计时器
-
-	// 根据时间和迷宫大小设置字体颜色和跳动特效
-	bool isBlinking = false;
-	if ((m_mazeSize == 32 && m_nSecondsElapsed >= 110) || (m_mazeSize == 64 && m_nSecondsElapsed >= 230)) {
-		dc.SetTextColor(RGB(255, 0, 0)); // 红色字体
-		isBlinking = true;
-	}
-	else {
-		dc.SetTextColor(RGB(0, 0, 0)); // 黑色字体
-	}
-
-	// 如果需要跳动特效
-	if (isBlinking && (m_nSecondsElapsed % 2 == 0)) {
-		font.DeleteObject();
-		font.CreatePointFont(300, _T("Arial")); // 增大字体
-		dc.SelectObject(&font);
-	}
-
-	dc.TextOutW(timerX, timerY, strTime); // 修改X坐标
-
-	// 恢复原来的字体
-	dc.SelectObject(pOldFont);
+    auto end = m_pMaze->getEnd();
+    CRect endRect(end.first * cellSize, end.second * cellSize, (end.first + 1) * cellSize, (end.second + 1) * cellSize);
+    dc.FillSolidRect(endRect, RGB(255, 0, 0)); // 红色终点
 }
 
 // 在updateWall函数中更新内存设备上下文
 void CMazeGameDlg::updateWall()
 {
-	m_bNeedUpdateWalls = true;
-	Invalidate(); // 触发重绘
+    m_bNeedUpdateWalls = true;
+    Invalidate(); // 触发重绘
 }
 
 void CMazeGameDlg::OnKeyDown(UINT nChar, UINT nRepCnt, UINT nFlags)
 {
-	switch (nChar) {
-	case VK_UP:    MovePossible(0, -1); break;
-	case VK_DOWN:  MovePossible(0, 1);  break;
-	case VK_LEFT:  MovePossible(-1, 0); break;
-	case VK_RIGHT: MovePossible(1, 0);  break;
-	}
-	CDialogEx::OnKeyDown(nChar, nRepCnt, nFlags);
+    if (m_isPaused || m_isGameEnded) return; // 如果游戏暂停或已经结束，直接返回
+
+    switch (nChar) {
+    case VK_UP:    MovePossible(0, -1); break;
+    case VK_DOWN:  MovePossible(0, 1);  break;
+    case VK_LEFT:  MovePossible(-1, 0); break;
+    case VK_RIGHT: MovePossible(1, 0);  break;
+    }
+    CDialogEx::OnKeyDown(nChar, nRepCnt, nFlags);
 }
+
 
 void CMazeGameDlg::MovePossible(int dx, int dy)
 {
-	int newX = m_playerPos.first + dx;
-	int newY = m_playerPos.second + dy;
-	if (!m_pMaze->isWall(newX, newY)) {
-		m_playerPos = { newX, newY };
-		Invalidate();
-
-		// 起点重置计时器
-		if (m_playerPos == m_pMaze->getStart()) {
-			m_nSecondsElapsed = 0;
-			m_bTimerRunning = true;
-			SetTimer(1, 1000, nullptr); // 启动计时器
-		}
-		//终点停止计时器
-		if (m_playerPos == m_pMaze->getEnd()) {
-			m_bTimerRunning = false;
-			KillTimer(1); // 停止计时器
-		}
-	}
+    int newX = m_playerPos.first + dx;
+    int newY = m_playerPos.second + dy;
+    if (!m_pMaze->isWall(newX, newY)) {
+        m_playerPos = { newX, newY };
+        Invalidate();
+        // 检查是否到达终点
+        if (m_playerPos == m_pMaze->getEnd()) {
+            EndGame();
+        }
+    }
 }
 
 BOOL CMazeGameDlg::PreTranslateMessage(MSG* pMsg)
 {
-	if (pMsg->message == WM_KEYDOWN)
-	{
-		if (!m_bTimerRunning) {
-			return TRUE; // 如果游戏暂停，不处理键盘事件
-		}
-		OnKeyDown(pMsg->wParam, pMsg->lParam, 0);
-		return TRUE;
-	}
-	return CDialogEx::PreTranslateMessage(pMsg);
+    if (pMsg->message == WM_KEYDOWN)
+    {
+        OnKeyDown(static_cast<UINT>(pMsg->wParam), static_cast<UINT>(pMsg->lParam), 0);
+        return TRUE;
+    }
+    return CDialogEx::PreTranslateMessage(pMsg);
 }
 
 
 void CMazeGameDlg::OnTimer(UINT_PTR nIDEvent)
 {
-	if (nIDEvent == 1 && m_bTimerRunning) {
-		m_nSecondsElapsed++;
-		Invalidate(); // 触发重绘
-	}
-	CDialogEx::OnTimer(nIDEvent);
+    if (nIDEvent == 1) {
+        m_currentTime = CTime::GetCurrentTime();
+        UpdateTimerDisplay();
+    }
+    else if (nIDEvent == 2) {
+        // 跳动特效
+        static bool toggle = false;
+        CRect rect;
+        m_timerEdit.GetWindowRect(&rect);
+        ScreenToClient(&rect);
+        if (toggle) {
+            rect.OffsetRect(2, 2);
+        }
+        else {
+            rect.OffsetRect(-2, -2);
+        }
+        m_timerEdit.MoveWindow(&rect);
+        toggle = !toggle;
+    }
+    CDialogEx::OnTimer(nIDEvent);
 }
 
-int CMazeGameDlg::GetElapsedTime() const
+
+void CMazeGameDlg::UpdateTimerDisplay()
 {
-	return m_nSecondsElapsed;
+    CTimeSpan elapsedTime = m_currentTime - m_startTime - m_totalPausedTime; // 减去总的暂停时间
+    CString strTime;
+    strTime.Format(_T("%02d:%02d"), elapsedTime.GetMinutes(), elapsedTime.GetSeconds());
+    m_timerEdit.SetWindowText(strTime);
+
+    // 检查是否需要进入警告状态
+    if ((m_mazeSize == 32 && elapsedTime.GetTotalSeconds() >= 110) ||
+        (m_mazeSize == 64 && elapsedTime.GetTotalSeconds() >= 230)) {
+        SetTimerAlert(true);
+    }
+    else {
+        SetTimerAlert(false);
+    }
 }
 
 
-void CMazeGameDlg::OnPauseButtonClicked()
+
+void CMazeGameDlg::EndGame()
 {
-	// 暂停按钮点击处理逻辑
-	if (m_bTimerRunning) {
-		KillTimer(1); // 停止计时器
-		m_bTimerRunning = false;
-		m_pauseButton.SetWindowText(_T("继续游戏"));
+    KillTimer(1); 
+    m_isGameEnded = true;
+    elapsed = m_currentTime - m_startTime; 
+}
 
-		// 在暂停按钮下方3个单位处显示“游戏已暂停”
-		CRect buttonRect;
-		m_pauseButton.GetWindowRect(&buttonRect);
-		ScreenToClient(&buttonRect);
-		int textX = buttonRect.left;
-		int textY = buttonRect.bottom + 3 * 15; // 3个单位处，假设单位高度为15
+HBRUSH CMazeGameDlg::OnCtlColor(CDC* pDC, CWnd* pWnd, UINT nCtlColor)
+{
+    HBRUSH hbr = CDialogEx::OnCtlColor(pDC, pWnd, nCtlColor);
 
-		CClientDC dc(this);
-		dc.SetBkMode(TRANSPARENT);
-		dc.TextOutW(textX, textY, _T("游戏已暂停"));
-	}
-	else {
-		SetTimer(1, 1000, nullptr); // 启动计时器
-		m_bTimerRunning = true;
-		m_pauseButton.SetWindowText(_T("暂停游戏"));
+    if (pWnd->GetDlgCtrlID() == IDC_PASSREQUIRE_STATIC || pWnd->GetDlgCtrlID() == IDC_SHOWPAUSE_STATIC)
+    {
+        pDC->SetBkMode(TRANSPARENT); // 设置背景模式为透明
+        return (HBRUSH)GetStockObject(NULL_BRUSH); // 返回空刷子
+    }
 
-		// 清除“游戏已暂停”文字
-		Invalidate();
-	}
+    if (pWnd->GetDlgCtrlID() == IDC_TIMER && m_isTimerAlert)
+    {
+        pDC->SetTextColor(RGB(255, 0, 0)); // 设置字体颜色为红色
+    }
+
+    return hbr;
 }
 
 
+void CMazeGameDlg::PauseGame()
+{
+    m_isPaused = true;
+    KillTimer(1); // 停止计时器
+    m_pauseButton.SetWindowText(_T("继续游戏")); // 更新按钮文字
+    m_showPauseStatic.ShowWindow(SW_SHOW); // 显示暂停状态的静态文本框
+    m_pauseTime = CTime::GetCurrentTime(); // 记录暂停时的时间
+}
 
+
+void CMazeGameDlg::ResumeGame()
+{
+    m_isPaused = false;
+    CTime currentTime = CTime::GetCurrentTime();
+    m_totalPausedTime += currentTime - m_pauseTime; // 累加暂停的时间
+    SetTimer(1, 1000, nullptr); // 重新启动计时器
+    m_pauseButton.SetWindowText(_T("暂停游戏")); // 更新按钮文字
+    m_showPauseStatic.ShowWindow(SW_HIDE); // 隐藏暂停状态的静态文本框
+}
+
+
+void CMazeGameDlg::OnBnClickedPauseButton()
+{
+    if (m_isPaused) {
+        ResumeGame();
+    }
+    else {
+        PauseGame();
+    }
+}
+
+
+void CMazeGameDlg::SetTimerAlert(bool alert)
+{
+    if (alert && !m_isTimerAlert) {
+        m_isTimerAlert = true;
+        m_alertFont.CreatePointFont(200, _T("Arial Bold")); // 创建警告字体
+        m_timerEdit.SetFont(&m_alertFont); // 设置计时器字体
+
+        // 添加跳动特效
+        CRect rect;
+        m_timerEdit.GetWindowRect(&rect);
+        ScreenToClient(&rect);
+        SetTimer(2, 500, nullptr); // 每0.5秒触发一次
+    }
+    else if (!alert && m_isTimerAlert) {
+        m_isTimerAlert = false;
+        m_timerEdit.SetFont(nullptr); // 恢复默认字体
+        KillTimer(2); // 停止跳动特效
+    }
+    m_timerEdit.Invalidate(); // 触发重绘以更新颜色
+}
+
+// 将CTime转换为std::chrono::system_clock::time_point
+std::chrono::system_clock::time_point CTimeToChrono(const CTime& time)
+{
+    SYSTEMTIME st;
+    time.GetAsSystemTime(st);
+
+    struct tm tm;
+    tm.tm_year = st.wYear - 1900;
+    tm.tm_mon = st.wMonth - 1;
+    tm.tm_mday = st.wDay;
+    tm.tm_hour = st.wHour;
+    tm.tm_min = st.wMinute;
+    tm.tm_sec = st.wSecond;
+    tm.tm_isdst = -1;
+
+    auto timeT = std::mktime(&tm);
+    return std::chrono::system_clock::from_time_t(timeT);
+}
+
+int CMazeGameDlg::GetTime() const
+{
+    auto startTimeChrono = CTimeToChrono(m_startTime);
+    auto currentTimeChrono = CTimeToChrono(m_currentTime);
+
+    auto elapsed = std::chrono::duration_cast<std::chrono::seconds>(currentTimeChrono - startTimeChrono).count();
+    return static_cast<int>(elapsed);
+}

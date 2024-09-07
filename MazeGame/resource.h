@@ -27,7 +27,12 @@
 #define IDC_HISTORY                     1012
 #define IDC_FAIL                        1013
 #define IDC_RESTART                     1014
-#define IDC_PAUSE_BUTTON                1015
+#define IDC_TIMER_STATIC                1015
+#define IDC_EDIT1                       1016
+#define IDC_TIMER                       1017
+#define IDC_PASSREQUIRE_STATIC          1018
+#define IDC_PAUSE_BUTTON                1019
+#define IDC_SHOWPAUSE_STATIC            1020
 
 
 // Next default values for new objects
@@ -36,7 +41,7 @@
 #ifndef APSTUDIO_READONLY_SYMBOLS
 #define _APS_NEXT_RESOURCE_VALUE        138
 #define _APS_NEXT_COMMAND_VALUE         32771
-#define _APS_NEXT_CONTROL_VALUE         1015
+#define _APS_NEXT_CONTROL_VALUE         1019
 #define _APS_NEXT_SYMED_VALUE           101
 #endif
 #endif
