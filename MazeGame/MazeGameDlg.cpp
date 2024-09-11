@@ -8,10 +8,17 @@
 #include "afxdialogex.h"
 #include <chrono>
 #include <ctime>
+#include"CEndGame.h"
+#include<fstream>
+#include <iostream>
 
 #ifdef _DEBUG
 #define new DEBUG_NEW
+#define FILENAME "TimeRecords.txt"
 #endif
+using namespace std;
+
+CMazeGameDlg* pMazeGameDlg = nullptr;
 
 CAboutDlg::CAboutDlg() : CDialogEx(IDD_ABOUTBOX)
 {
@@ -55,7 +62,7 @@ END_MESSAGE_MAP()
 BOOL CMazeGameDlg::OnInitDialog()
 {
     CDialogEx::OnInitDialog();
-
+    InitDatabase();
     // 将“关于...”菜单项添加到系统菜单中。
 
     // IDM_ABOUTBOX 必须在系统命令范围内。
@@ -136,8 +143,10 @@ HCURSOR CMazeGameDlg::OnQueryDragIcon()
 
 CMazeGameDlg::CMazeGameDlg(CWnd* pParent /*=nullptr*/)
     : CDialogEx(IDD_MAZEGAME_DIALOG, pParent), m_pMaze(nullptr), m_mazeSize(32), m_hIcon(nullptr),
-    m_bNeedUpdateWalls(true), m_isPaused(false), m_isTimerAlert(false), m_isGameEnded(false) 
+    m_bNeedUpdateWalls(true), m_isPaused(false), m_isTimerAlert(false), m_isGameEnded(false),
+    m_mazeData(32, std::vector<int>(32, 0)) 
 {
+    pMazeGameDlg = this;
 }
 
 
@@ -222,6 +231,7 @@ void CMazeGameDlg::OnKeyDown(UINT nChar, UINT nRepCnt, UINT nFlags)
 
 void CMazeGameDlg::MovePossible(int dx, int dy)
 {
+    m_playerPath.emplace_back(m_playerPos.first, m_playerPos.second);
     int newX = m_playerPos.first + dx;
     int newY = m_playerPos.second + dy;
     if (!m_pMaze->isWall(newX, newY)) {
@@ -287,13 +297,24 @@ void CMazeGameDlg::UpdateTimerDisplay()
     }
 }
 
-
-
 void CMazeGameDlg::EndGame()
 {
-    KillTimer(1); 
+    KillTimer(1);
     m_isGameEnded = true;
-    elapsed = m_currentTime - m_startTime; 
+    CTimeSpan elapsed = m_currentTime - m_startTime;
+    const_cast<CMazeGameDlg*>(this)->m_timeRecords.push_back(static_cast<int>(elapsed.GetTotalSeconds()));
+    SaveTimeRecordsToFile();
+    UpdateExitTime();
+
+    // 保存玩家路径到文件
+    std::ofstream file("PlayerPath.txt");
+    for (const auto& pos : m_playerPath)
+    {
+        file << pos.first << " " << pos.second << std::endl;
+    }
+
+    CEndGame endGameDlg;
+    endGameDlg.DoModal();
 }
 
 HBRUSH CMazeGameDlg::OnCtlColor(CDC* pDC, CWnd* pWnd, UINT nCtlColor)
@@ -394,4 +415,110 @@ int CMazeGameDlg::GetTime() const
 
     auto elapsed = std::chrono::duration_cast<std::chrono::seconds>(currentTimeChrono - startTimeChrono).count();
     return static_cast<int>(elapsed);
+}
+
+
+void CMazeGameDlg::SaveTimeRecordsToFile()
+{
+    std::sort(m_timeRecords.begin(), m_timeRecords.end(), std::greater<int>());
+    std::ofstream ofs(FILENAME, std::ios::out);
+    if (!ofs.is_open()) {
+        AfxMessageBox(_T("无法打开文件进行写入"));
+        return;
+    }
+    for (int time : m_timeRecords) {
+        ofs << time << std::endl;
+    }
+    ofs.close();
+}
+
+void CMazeGameDlg::UpdateExitTime()
+{
+    // 获取游戏时间
+    int gameTime = GetTime();
+
+    // 将游戏时间转换为字符串
+    CString strGameTime;
+    strGameTime.Format(_T("%d"), gameTime);
+
+    // 获取IDC_EXIT控件并设置其文本
+    CEdit* pExitEdit = (CEdit*)GetDlgItem(IDC_SCOREDIT);
+    if (pExitEdit != nullptr)
+    {
+        pExitEdit->SetWindowText(strGameTime);
+    }
+}
+
+// 获取迷宫数据的实现
+std::vector<std::vector<int>> CMazeGameDlg::GetMazeData() const {
+    return m_pMaze->GetMazeData();
+}
+
+// 获取玩家路径的实现
+std::vector<std::pair<int, int>> CMazeGameDlg::GetPlayerPath() const {
+    return m_playerPath;
+}
+
+//创建数据库和表
+void CMazeGameDlg::InitDatabase()
+{
+    sqlite3* DB;
+    char* errorMessage;
+
+    int exit = sqlite3_open("MazeGame.db", &DB);
+    if (exit) {
+        std::cerr << "Error open DB " << sqlite3_errmsg(DB) << std::endl;
+        return;
+    }
+
+    std::string sql = "CREATE TABLE IF NOT EXISTS GameRecords("
+        "ID INTEGER PRIMARY KEY AUTOINCREMENT, "
+        "StartTime TEXT NOT NULL, "
+        "MazeMap TEXT NOT NULL, "
+        "MovePath TEXT NOT NULL);";
+
+    exit = sqlite3_exec(DB, sql.c_str(), NULL, 0, &errorMessage);
+    if (exit != SQLITE_OK) {
+        std::cerr << "Error Create Table " << errorMessage << std::endl;
+        sqlite3_free(errorMessage);
+    }
+
+    sqlite3_close(DB);
+}
+
+//保存游戏记录到数据库
+void CMazeGameDlg::SaveGameRecord(const std::string& startTime, const std::string& mazeMap, const std::string& movePath)
+{
+    sqlite3* DB;
+    char* errorMessage;
+
+    int exit = sqlite3_open("MazeGame.db", &DB);
+    if (exit) {
+        std::cerr << "Error open DB " << sqlite3_errmsg(DB) << std::endl;
+        return;
+    }
+
+    std::string sql = "INSERT INTO GameRecords (StartTime, MazeMap, MovePath) VALUES ('" + startTime + "', '" + mazeMap + "', '" + movePath + "');";
+
+    exit = sqlite3_exec(DB, sql.c_str(), NULL, 0, &errorMessage);
+    if (exit != SQLITE_OK) {
+        std::cerr << "Error Insert " << errorMessage << std::endl;
+        sqlite3_free(errorMessage);
+    }
+
+    sqlite3_close(DB);
+}
+
+//调用保存函数
+void CMazeGameDlg::OnGameStart()
+{
+    auto startTime = std::chrono::system_clock::to_time_t(std::chrono::system_clock::now());
+    char buffer[26];
+    ctime_s(buffer, sizeof(buffer), &startTime);
+    std::string startTimeStr = buffer;
+
+    std::string mazeMap = "Maze map data"; // 这里替换为实际的迷宫地图数据
+    std::string movePath = "Move path data"; // 这里替换为实际的移动路径数据
+
+    SaveGameRecord(startTimeStr, mazeMap, movePath);
 }

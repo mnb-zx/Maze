@@ -27,5 +27,6 @@ public:
     afx_msg void OnBnClickedAbout();
 private:
     CAboutDlg* m_pAboutDlg;  // 指向"关于"对话框的指针
+    // afx_msg void OnBnClickedLookbackButton();
 };
 

@@ -6,7 +6,7 @@
 #include "afxdialogex.h"
 #include "Cwlc.h"
 #include "MazeGameDlg.h"
-
+//#include "CLookbackSelectDlg.h"
 
 
 
@@ -39,6 +39,7 @@ BEGIN_MESSAGE_MAP(Cwlc, CDialogEx)
     ON_BN_CLICKED(IDC_SELECT_64, &Cwlc::OnBnClickedSelect64)
     ON_BN_CLICKED(IDC_EXIT, &Cwlc::OnBnClickedExit)
     ON_BN_CLICKED(IDC_ABOUT, &Cwlc::OnBnClickedAbout)
+    //ON_BN_CLICKED(IDC_LOOKBACK_BUTTON, &Cwlc::OnBnClickedLookbackButton) 
 END_MESSAGE_MAP()
 
 void Cwlc::OnBnClickedSelect32()
@@ -47,7 +48,8 @@ void Cwlc::OnBnClickedSelect32()
     dlg.InitializeMaze(32);
     this->ShowWindow(SW_HIDE);  // 隐藏欢迎对话框
     dlg.DoModal();
-    this->ShowWindow(SW_SHOW);  // 游戏对话框关闭后重新显示欢迎对话框
+    this->ShowWindow(SW_SHOW); 
+    EndDialog(IDOK); // 关闭对话框// 游戏对话框关闭后重新显示欢迎对话框
 }
 
 void Cwlc::OnBnClickedSelect64()
@@ -56,7 +58,8 @@ void Cwlc::OnBnClickedSelect64()
     dlg.InitializeMaze(64);
     this->ShowWindow(SW_HIDE);  // 隐藏欢迎对话框
     dlg.DoModal();
-    this->ShowWindow(SW_SHOW);  // 游戏对话框关闭后重新显示欢迎对话框
+    this->ShowWindow(SW_SHOW); 
+    EndDialog(IDOK); // 关闭对话框// 游戏对话框关闭后重新显示欢迎对话框
 }
 
 void Cwlc::OnBnClickedExit()
@@ -82,3 +85,9 @@ void Cwlc::OnBnClickedAbout()
         m_pAboutDlg->ShowWindow(SW_SHOW);
     }
 }
+//void Cwlc::OnBnClickedLookbackButton()
+//{
+//    CLookbackSelectDlg dlg;
+//    dlg.DoModal();
+//}
+

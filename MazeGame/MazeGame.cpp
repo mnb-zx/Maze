@@ -193,3 +193,13 @@ void Maze::dfs(int x, int y) {
 		}
 	}
 }
+
+std::vector<std::vector<int>> Maze::GetMazeData() const {
+	std::vector<std::vector<int>> mazeData(width, std::vector<int>(height, 0));
+	for (int i = 0; i < width; ++i) {
+		for (int j = 0; j < height; ++j) {
+			mazeData[i][j] = grid[i][j] ? 1 : 0; 
+		}
+	}
+	return mazeData;
+}

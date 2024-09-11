@@ -172,9 +172,12 @@
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>_WINDOWS;_DEBUG;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <PrecompiledHeaderFile>pch.h</PrecompiledHeaderFile>
+      <AdditionalIncludeDirectories>D:\sqlite\sqlite-amalgamation-3460100;D：\sqlite</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
+      <AdditionalLibraryDirectories>D:\sqlite</AdditionalLibraryDirectories>
+      <AdditionalDependencies>sqlite3.lib</AdditionalDependencies>
     </Link>
     <Midl>
       <MkTypLibCompatible>false</MkTypLibCompatible>
@@ -268,6 +271,8 @@
   <ItemGroup>
     <ClInclude Include="CEndGame.h" />
     <ClInclude Include="CFailure.h" />
+    <ClInclude Include="CImagingDlg.h" />
+    <ClInclude Include="CLookbackSelectDlg.h" />
     <ClInclude Include="Cwlc.h" />
     <ClInclude Include="framework.h" />
     <ClInclude Include="MazeGame.h" />
@@ -279,6 +284,8 @@
   <ItemGroup>
     <ClCompile Include="CEndGame.cpp" />
     <ClCompile Include="CFailure.cpp" />
+    <ClCompile Include="CImagingDlg.cpp" />
+    <ClCompile Include="CLookbackSelectDlg.cpp" />
     <ClCompile Include="Cwlc.cpp" />
     <ClCompile Include="MazeGame.cpp" />
     <ClCompile Include="MazeGameDlg.cpp" />
@@ -295,6 +302,7 @@
     <ResourceCompile Include="MazeGame.rc" />
   </ItemGroup>
   <ItemGroup>
+    <None Include="packages.config" />
     <None Include="res\MazeGame.rc2" />
   </ItemGroup>
   <ItemGroup>

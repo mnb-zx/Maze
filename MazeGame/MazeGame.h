@@ -12,6 +12,8 @@
 #include <vector>
 #include <random>
 #include <chrono>
+#include "sqlite3.h"
+
 
 // CMazeGameApp:
 // 有关此类的实现，请参阅 MazeGame.cpp
@@ -24,6 +26,7 @@ public:
     bool isWall(int x, int y) const;
     std::pair<int, int> getStart() const;
     std::pair<int, int> getEnd() const;
+    std::vector<std::vector<int>> GetMazeData() const;
 
 private:
     void generateStartAndEnd();

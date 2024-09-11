@@ -60,6 +60,9 @@ private:
     CBitmap m_memBitmap;
     std::pair<int, int> m_prevPlayerPos;
     bool m_isGameEnded;
+    // 添加一个数组来保存每次游戏 GetTime 返回的值
+    std::vector<int> m_timeRecords;
+
 
     // 计时器相关成员变量
     CTime m_startTime;
@@ -83,6 +86,22 @@ private:
     CTime m_pauseTime; // 记录暂停时的时间
     CTimeSpan m_totalPausedTime; // 记录总的暂停时间
 
+	// 回放相关成员变量
+	std::vector<std::vector<int>> m_mazeData; // 存储迷宫数据
+    std::vector<std::pair<int, int>> m_playerPath; // 存储玩家路径
+
 public:
     afx_msg void OnBnClickedPauseButton();
+    void SaveTimeRecordsToFile();
+    void UpdateExitTime();
+
+	// 回放相关成员函数
+    void InitDatabase();
+    void SaveGameRecord(const std::string& startTime, const std::string& mazeMap, const std::string& movePath);
+    void OnGameStart();
+    std::vector<std::vector<int>> GetMazeData() const;
+    std::vector<std::pair<int, int>> GetPlayerPath() const;
+    std::pair<int, int> GetMazeStartPos() const { return m_pMaze->getStart(); }
+    std::pair<int, int> GetMazeEndPos() const { return m_pMaze->getEnd(); }
 };
+extern CMazeGameDlg* pMazeGameDlg;

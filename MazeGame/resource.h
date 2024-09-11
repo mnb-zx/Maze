@@ -11,6 +11,8 @@
 #define IDC_ENDGAME                     134
 #define IDD_DIALOG1                     136
 #define IDC_FAILGAME                    136
+#define IDD_LOOKBACKSELECT              138
+#define IDD_IMAGING                     139
 #define IDC_WELCOME                     1000
 #define IDC_SELECT                      1001
 #define IDC_SELECT_32                   1002
@@ -32,16 +34,19 @@
 #define IDC_TIMER                       1017
 #define IDC_PASSREQUIRE_STATIC          1018
 #define IDC_PAUSE_BUTTON                1019
-#define IDC_SHOWPAUSE_STATIC            1020
-
+#define IDC_SELECTTIMESCONFIRM          1020
+#define IDC_SHOWPAUSE_STATIC            1022
+#define IDC_SELECTTIMES_COMBO           1022
+#define IDC_PLAYBACK_BUTTON             1023
+#define IDC_LOOKBACK_BUTTON             1024
 
 // Next default values for new objects
 // 
 #ifdef APSTUDIO_INVOKED
 #ifndef APSTUDIO_READONLY_SYMBOLS
-#define _APS_NEXT_RESOURCE_VALUE        138
+#define _APS_NEXT_RESOURCE_VALUE        144
 #define _APS_NEXT_COMMAND_VALUE         32771
-#define _APS_NEXT_CONTROL_VALUE         1019
+#define _APS_NEXT_CONTROL_VALUE         1025
 #define _APS_NEXT_SYMED_VALUE           101
 #endif
 #endif
