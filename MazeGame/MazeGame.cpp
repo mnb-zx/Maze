@@ -133,6 +133,14 @@ void Maze::generate() {
 	// 确保起点和终点是通路
 	grid[start.second][start.first] = false;
 	grid[end.second][end.first] = false;
+	if (grid[end.second + 1][end.first] == true &&
+	grid[end.second - 1][end.first] == true &&
+	grid[end.second][end.first + 1] == true &&
+	grid[end.second][end.first - 1] == true)
+{
+	grid[end.second][end.first] = true;
+	generate();
+}
 }
 
 void Maze::generateStartAndEnd() {
