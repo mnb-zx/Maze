@@ -138,7 +138,15 @@ void Maze::generate() {
 void Maze::generateStartAndEnd() {
 	std::uniform_int_distribution<int> dist(1, 4);
 	int startSide = dist(rng);
-	int endSide = dist(rng);
+	int endSide;
+// 根据起点所在的一侧确定终点所在的一侧
+switch (startSide) {
+case 1: endSide = 3; break; // 如果起点在顶部，则终点在底部
+case 2: endSide = 4; break; // 如果起点在右侧，则终点在左侧
+case 3: endSide = 1; break; // 如果起点在底部，则终点在顶部
+case 4: endSide = 2; break; // 如果起点在左侧，则终点在右侧
+default: endSide = 1; break; // 默认情况下，设置为顶部
+}
 
 	auto getRandomPointOnSide = [&](int side) {
 		std::uniform_int_distribution<int> distPos(1, (side % 2 == 0 ? width : height) - 2);
